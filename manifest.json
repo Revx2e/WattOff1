@@ -1,0 +1,13 @@
+{
+  "name": "WattOff 에너지 지킴이",
+  "short_name": "WattOff",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d2a1e",
+  "theme_color": "#0f3d2b",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

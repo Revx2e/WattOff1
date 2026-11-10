@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0f3d2b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<title>WattOff 에너지 지킴이</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Pretendard,system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#f3f7f5;color:#13221b}
+.scr{position:fixed;inset:0;overflow-y:auto}.hide{display:none!important}
+/* splash */
+#splash{background:radial-gradient(circle at 50% 30%,#1f6b4a,#0d2a1e 55%,#071510);color:#eafff3;display:flex;flex-direction:column;align-items:center;padding:12vh 28px 40px;z-index:50}
+.orb{width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#b8ffd6,#3ddc84 40%,rgba(61,220,132,0) 72%);display:flex;align-items:center;justify-content:center;animation:pulse 3s infinite}
+.orb svg{width:74px}@keyframes pulse{50%{transform:scale(1.07);filter:brightness(1.2)}}
+.brand{margin-top:30px;font-size:40px;font-weight:800}.brand span{color:#3ddc84}
+.slogan{margin-top:10px;font-size:16px;color:#bfe9d3;line-height:1.6;text-align:center}
+.glass{margin-top:34px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:16px 20px;width:100%}
+.glass b{font-size:24px;color:#3ddc84}.glass p{font-size:13px;color:#a9cdbb;margin-top:4px}
+.big{margin-top:auto;width:100%;padding:18px;border:none;border-radius:18px;background:linear-gradient(90deg,#3ddc84,#1fbf9a);color:#062113;font-size:18px;font-weight:800;box-shadow:0 10px 30px rgba(61,220,132,.4)}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:18px}
+.roles button{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:#d8f5e6;font-size:14px}
+.roles button.on{background:#3ddc84;color:#062113;font-weight:800;border-color:#3ddc84}
+.rl{font-size:13px;color:#8fc0a8;margin-top:22px;align-self:flex-start}
+/* home */
+#main{padding-bottom:90px}
+.top{padding:calc(env(safe-area-inset-top) + 22px) 20px 24px;background:linear-gradient(160deg,#0f3d2b,#1a6b4b);color:#fff;border-radius:0 0 28px 28px}
+.row{display:flex;align-items:center;justify-content:space-between}
+.hello{font-size:13px;color:#a8e6c6}.top h2{font-size:21px;margin-top:3px}
+.conn{font-size:11px;padding:5px 9px;border-radius:20px;background:rgba(255,255,255,.15)}
+.conn.ok{background:#3ddc84;color:#062113;font-weight:700}
+.tabs{display:flex;background:rgba(255,255,255,.12);border-radius:14px;padding:4px;margin-top:16px}
+.tabs div{flex:1;padding:9px;border-radius:11px;font-size:14px;font-weight:700;text-align:center}
+.tabs .on{background:#fff;color:#0f3d2b}
+.score{display:flex;align-items:center;gap:16px;margin-top:18px}
+.ring{width:92px;height:92px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ring div{width:72px;height:72px;border-radius:50%;background:#14523a;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:23px;font-weight:800}
+.ring small{font-size:10px;color:#a8e6c6;font-weight:500}
+.score p{font-size:13px;color:#cfeee0;line-height:1.6}.score b{color:#7dffb5}
+.qa{display:flex;gap:8px;margin-top:16px}.qa button{flex:1;padding:11px;border-radius:13px;border:none;font-weight:700;font-size:13px;background:rgba(255,255,255,.14);color:#fff}
+.sec{padding:18px 18px 0}.sec h3{font-size:16px;margin-bottom:10px}
+.alert{background:#fff4ec;border:1px solid #ffd7bd;border-radius:16px;padding:13px;display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.alert .ic{font-size:24px}.alert b{font-size:14px;color:#c2410c}.alert p{font-size:12px;color:#7a5a46;margin-top:2px}
+.alert .bt{margin-left:auto;display:flex;flex-direction:column;gap:5px}
+.alert button{background:#f97316;color:#fff;border:none;border-radius:10px;padding:8px 11px;font-weight:700;font-size:12px;white-space:nowrap}
+.alert button.g{background:#eee;color:#666}
+.empty{background:#e8fff2;border-radius:16px;padding:16px;font-size:14px;color:#1a6b4b;text-align:center}
+.room{background:#fff;border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,61,43,.06)}
+.room .hd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dot{width:10px;height:10px;border-radius:50%}.room .hd b{font-size:15px}.room .hd span{font-size:12px;color:#7a8d84;margin-left:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dev{background:#f6faf8;border-radius:14px;padding:12px;position:relative}
+.dev .e{font-size:22px}.dev h4{font-size:13px;margin-top:6px}.dev p{font-size:11px;color:#7a8d84;margin-top:2px}
+.dev .w{font-size:11px;font-weight:700;margin-top:6px;color:#1fa463}
+.dev.waste{outline:2px solid #ffc9cb;background:#fff7f7}.dev.waste .w{color:#e5484d}
+.dev.pend{opacity:.6}
+.tg{position:absolute;top:12px;right:10px;width:42px;height:24px;border-radius:12px;background:#d4ddd9;transition:.25s}
+.tg::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.25s}
+.tg.on{background:#3ddc84}.tg.on::after{left:21px}.tg.lock{opacity:.35}
+.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 4px 14px rgba(15,61,43,.06)}
+.kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kpi .card{margin:0}.kpi b{font-size:22px;color:#1a6b4b;display:block}.kpi span{font-size:12px;color:#7a8d84}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;margin-top:10px}
+.bars div{flex:1;background:linear-gradient(#3ddc84,#1fa463);border-radius:6px 6px 0 0;position:relative}
+.bars div span{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:11px;color:#7a8d84}
+.log{font-size:12px;color:#4d6b5d;border-bottom:1px solid #eef3f0;padding:8px 0}
+label{display:block;font-size:12px;color:#5c7268;margin:10px 0 4px}
+input,select{width:100%;padding:11px;border:1px solid #d7e2dc;border-radius:11px;font-size:14px;background:#fff}
+.btn{width:100%;padding:13px;border:none;border-radius:13px;background:#1a6b4b;color:#fff;font-weight:700;font-size:14px;margin-top:12px}
+.btn.s{background:#e8f3ee;color:#1a6b4b}
+.nav{position:fixed;bottom:0;left:0;right:0;height:calc(68px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:#fff;display:flex;justify-content:space-around;align-items:center;border-top:1px solid #e3ebe7;z-index:10}
+.nav div{font-size:11px;color:#9aaba3;text-align:center;flex:1;position:relative}.nav div span{display:block;font-size:20px}.nav .on{color:#1a6b4b;font-weight:700}
+.badge{position:absolute;top:-4px;right:28%;background:#e5484d;color:#fff;font-size:10px;border-radius:9px;padding:1px 5px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;z-index:60}
+.sheet{background:#fff;width:100%;border-radius:24px 24px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom))}
+.sheet h3{font-size:18px}.sheet p{font-size:14px;color:#5c7268;margin-top:8px;line-height:1.5}
+.sheet .row{gap:8px;margin-top:18px}.sheet .row button{flex:1}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#13221b;color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;z-index:70;max-width:90%;text-align:center}
+.seg{display:flex;gap:6px}.seg button{flex:1;padding:10px 4px;border-radius:11px;border:1px solid #d7e2dc;background:#fff;font-size:12px}
+.seg button.on{background:#1a6b4b;color:#fff;border-color:#1a6b4b;font-weight:700}
+.chip{display:inline-block;background:#eef3f0;border-radius:20px;padding:6px 10px;font-size:12px;margin:3px}
+</style></head><body>
+
+<!-- ① 처음 화면 -->
+<div id="splash" class="scr">
+  <div class="orb"><svg viewBox="0 0 24 24" fill="#063d22"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+  <div class="brand">Watt<span>Off</span></div>
+  <div class="slogan">아무도 없는 교실, 켜진 콘센트<br>낭비되는 전기를 찾아 끄세요</div>
+  <div class="glass"><b id="spSaved">🌍 0 kWh</b><p id="spTree">지금까지 내가 아낀 전기</p></div>
+  <div class="rl">나는 누구인가요? (권한)</div>
+  <div class="roles" id="roleBox"></div>
+  <button class="big" style="margin-top:26px" onclick="start()">시작하기</button>
+</div>
+
+<!-- ② 메인 -->
+<div id="main" class="scr hide">
+  <div class="top">
+    <div class="row"><div><div class="hello" id="hello"></div><h2 id="headline"></h2></div><div class="conn" id="conn">데모 모드</div></div>
+    <div class="tabs"><div id="t-school" onclick="setSpace('school')">🏫 학교</div><div id="t-home" onclick="setSpace('home')">🏠 우리집</div></div>
+    <div class="score"><div class="ring" id="ring"><div><span id="scoreN">0</span><small>절약 점수</small></div></div><p id="scoreTxt"></p></div>
+    <div class="qa"><button onclick="bulkOff(false)">⚡ 낭비 모두 끄기</button><button onclick="bulkOff(true)" id="awayBtn">🚪 외출/하교 모드</button></div>
+  </div>
+  <div id="pg-home"></div>
+  <div id="pg-alerts" class="hide"></div>
+  <div id="pg-report" class="hide"></div>
+  <div id="pg-set" class="hide"></div>
+</div>
+
+<div class="nav hide" id="nav">
+  <div class="on" onclick="page('home',this)"><span>🏠</span>홈</div>
+  <div onclick="page('alerts',this)"><span>🔔</span>알림<i class="badge hide" id="bdg"></i></div>
+  <div onclick="page('report',this)"><span>📊</span>리포트</div>
+  <div onclick="page('set',this)"><span>⚙️</span>설정</div>
+</div>
+
+<script>
+/* ================= 설정값 (기획서 4장 판단 로직) ================= */
+const EMPTY_MIN = 10;        // 재실 없음 + 켜짐 10분 이상 → 낭비
+const STANDBY_W = 10;        // 대기전력 기준 10W 미만
+const STANDBY_H = 2;         // 2시간 이상 지속
+const AUTO2_MIN = 5;         // 자동 2단계: 5분 무응답 시 자동 끄기
+const VERIFY_SEC = 30;       // OFF 후 30초 내 상태 확인
+const CO2 = 0.46, PRICE = 150; // kg/kWh, 원/kWh(근사)
+const ICON = {light:'💡',aircon:'❄️',fan:'🌀',plug:'🔌',tv:'📺',pc:'🖥️',fridge:'🧊',heater:'🔥'};
+const CTRL = {relay:'릴레이/스위치',plug:'스마트 플러그',ir:'IR 리모컨'};
+const ROLES = {
+  student:{n:'학생(에너지 도우미)',space:'school'}, teacher:{n:'담임교사',space:'school'},
+  admin:{n:'행정실/관리자',space:'school'}, parent:{n:'가정: 부모',space:'home'}, child:{n:'가정: 자녀',space:'home'}
+};
+const now=()=>Date.now(), M=60000, H=3600000;
+
+/* ================= 상태 저장 ================= */
+function demoData(){ const t=now(); return {
+  role:'teacher', myRoom:'2-3', space:'school', auto:1, savedWh:0, offCount:0, demo:true,
+  mqtt:{url:'wss://broker.hivemq.com:8884/mqtt',user:'',pass:'',prefix:'wattoff/myschool'},
+  daily:[3.1,2.4,4.0,1.8,2.9,1.2,0], logs:[], alerts:[],
+  rooms:[
+   {id:'2-3',space:'school',name:'2학년 3반',occupied:false,emptySince:t-40*M,devices:[
+     {id:'light',name:'조명',type:'light',control:'relay',state:'ON',power:360,remote:true,onSince:t-2*H},
+     {id:'aircon',name:'에어컨',type:'aircon',control:'ir',state:'ON',power:1800,remote:true,onSince:t-90*M}]},
+   {id:'2-1',space:'school',name:'2학년 1반',occupied:true,emptySince:null,devices:[
+     {id:'light',name:'조명',type:'light',control:'relay',state:'ON',power:360,remote:true,onSince:t-3*H},
+     {id:'fan',name:'선풍기',type:'fan',control:'plug',state:'ON',power:45,remote:true,onSince:t-H}]},
+   {id:'sci',space:'school',name:'과학실',occupied:false,emptySince:t-3*H,devices:[
+     {id:'pc',name:'PC 멀티탭',type:'pc',control:'plug',state:'OFF',power:0,remote:true,onSince:null},
+     {id:'fridge',name:'시약 냉장고',type:'fridge',control:'plug',state:'ON',power:60,remote:false,onSince:t-99*H}]},
+   {id:'living',space:'home',name:'거실',occupied:false,emptySince:t-3*H,devices:[
+     {id:'tv',name:'TV·셋톱박스',type:'tv',control:'plug',state:'ON',power:9,remote:true,onSince:t-6*H,lowSince:t-6*H},
+     {id:'fridge',name:'냉장고',type:'fridge',control:'plug',state:'ON',power:60,remote:false,onSince:t-99*H}]},
+   {id:'myroom',space:'home',name:'내 방',occupied:false,emptySince:t-50*M,devices:[
+     {id:'charger',name:'충전기',type:'plug',control:'plug',state:'ON',power:3,remote:true,onSince:t-5*H,lowSince:t-3*H},
+     {id:'light',name:'조명',type:'light',control:'relay',state:'ON',power:30,remote:true,onSince:t-H}]}
+  ]};}
+let S = JSON.parse(localStorage.getItem('wattoff')||'null') || demoData();
+const save=()=>localStorage.setItem('wattoff',JSON.stringify(S));
+const pending={};   // 확인 대기 중인 명령
+const snoozed={};   // [무시] 한 낭비
+
+/* ================= 권한 (기획서 3-5, 3-6) ================= */
+function canControl(room,dev,action){
+  const r=S.role;
+  if(!dev.remote) return [false,'제외 목록 기기(원격 차단 불가)'];
+  if(action==='ON' && !['admin','parent'].includes(r)) return [false,'원격 켜기는 관리자/부모만 가능해요'];
+  if(r==='student'){
+    if(room.id!==S.myRoom) return [false,'내 교실만 제어할 수 있어요'];
+    if(dev.type!=='light') return [false,'학생은 조명만 제어할 수 있어요'];
+    const h=new Date().getHours(), d=new Date().getDay();
+    if(d>0&&d<6&&h>=9&&h<16&&room.occupied) return [false,'수업 중에는 학생 제어가 잠겨요'];
+  }
+  if(r==='teacher' && room.id!==S.myRoom) return [false,'담임 교실만 제어할 수 있어요'];
+  return [true,''];
+}
+const canBulk=()=>['admin','parent'].includes(S.role);
+
+/* ================= 낭비 판단 ================= */
+function wasteOf(room,d){
+  if(d.state!=='ON'||!d.remote) return null;
+  if(['light','aircon','fan','heater'].includes(d.type) && !room.occupied && room.emptySince && now()-room.emptySince>=EMPTY_MIN*M)
+    return `사람 없음 ${Math.round((now()-room.emptySince)/M)}분째 켜짐`;
+  if(d.control==='plug' && d.power<STANDBY_W && d.lowSince && now()-d.lowSince>=STANDBY_H*H)
+    return `대기전력 ${d.power}W · ${Math.round((now()-d.lowSince)/H)}시간째`;
+  return null;
+}
+function wasteList(space){
+  const out=[]; S.rooms.filter(r=>!space||r.space===space).forEach(r=>r.devices.forEach(d=>{
+    const w=wasteOf(r,d); if(w&&!snoozed[r.id+'/'+d.id]) out.push({r,d,w});})); return out;
+}
+
+/* ================= 제어 + 확인 (기획서 3-2, 3-3) ================= */
+function request(room,dev,action){
+  const [ok,why]=canControl(room,dev,action); if(!ok) return toast('🔒 '+why);
+  if(action==='OFF' && room.occupied)
+    return confirmBox('사람이 감지됩니다',`현재 ${room.name}에 사람이 감지됩니다. 그래도 ${dev.name}을(를) 끌까요?`,()=>send(room,dev,action));
+  send(room,dev,action);
+}
+function send(room,dev,action,by){
+  const key=room.id+'/'+dev.id; if(pending[key]) return;
+  const prevPower=dev.power;
+  pending[key]={action,t:now(),prevPower};
+  if(S.demo){ setTimeout(()=>applyState(room.id,dev.id,action==='OFF'?(dev.control==='ir'?'OFF_SENT':'OFF'):'ON'),1200); }
+  else if(client&&client.connected){ client.publish(`${S.mqtt.prefix}/${room.space}/${room.id}/${dev.id}`,action,{qos:1}); }
+  else { delete pending[key]; return toast('⚠️ 서버 연결 끊김 — 기기를 직접 꺼주세요'); }
+  pending[key].timer=setTimeout(()=>{ delete pending[key];
+    addLog(room,dev,action,by,'fail'); notify('❌ 제어 실패',`${room.name} ${dev.name}이(가) 꺼지지 않았어요. 직접 확인이 필요합니다`); render();
+  },VERIFY_SEC*1000);
+  render();
+}
+function applyState(roomId,devId,st){
+  const room=S.rooms.find(r=>r.id===roomId); if(!room) return; const dev=room.devices.find(d=>d.id===devId); if(!dev) return;
+  const key=roomId+'/'+devId, p=pending[key];
+  const on = st==='ON';
+  if(p && (p.action==='ON')!==on) return; // 아직 명령 반영 전 상태 보고 → 무시하고 계속 대기
+  if(!on && dev.state==='ON'){ // 절약량 누적: 남은 시간 1시간 일찍 끈 것으로 근사
+    const wh=Math.min(dev.power,3000)*1; S.savedWh+=wh; S.daily[6]=+(S.daily[6]+wh/1000).toFixed(2); S.offCount++;
+  }
+  dev.state=on?'ON':'OFF'; if(!on){dev.power=0;dev.onSince=null;dev.lowSince=null;} else dev.onSince=dev.onSince||now();
+  if(p){ clearTimeout(p.timer); delete pending[key]; addLog(room,dev,p.action,null,'success');
+    toast(`✅ ${room.name} ${dev.name}이(가) ${on?'켜졌':'꺼졌'}습니다${st==='OFF_SENT'?' (IR 신호 전송)':''}`); }
+  save(); render();
+}
+function addLog(room,dev,action,by,result){
+  S.logs.unshift({t:now(),room:room.name,dev:dev.name,action,by:by||ROLES[S.role].n,result}); S.logs=S.logs.slice(0,100); save();
+}
+function bulkOff(away){
+  if(!canBulk()) return toast('🔒 전체 제어는 관리자/부모만 가능해요');
+  const list = away ? S.rooms.filter(r=>r.space===S.space).flatMap(r=>r.devices.filter(d=>d.state==='ON'&&d.remote).map(d=>({r,d})))
+                    : wasteList(S.space);
+  if(!list.length) return toast('끌 기기가 없어요 👍');
+  confirmBox(away?(S.space==='school'?'하교 모드':'외출 모드'):'낭비 모두 끄기',
+    `${list.length}개 기기를 끕니다. (냉장고 등 제외 목록은 유지)`,()=>list.forEach(x=>send(x.r,x.d,'OFF')));
+}
+
+/* ================= 자동 제어 (기획서 3-4) ================= */
+const firstSeen={};
+function autoTick(){
+  wasteList().forEach(({r,d,w})=>{
+    const k=r.id+'/'+d.id;
+    if(!firstSeen[k]){ firstSeen[k]=now(); notify('🔴 전기 낭비 감지',`${r.name} ${d.name} — ${w}`); S.alerts.unshift({t:now(),txt:`${r.name} ${d.name} — ${w}`}); S.alerts=S.alerts.slice(0,50); save(); }
+    if(S.auto===3 || (S.auto===2 && now()-firstSeen[k]>=AUTO2_MIN*M)) send(r,d,'OFF','자동 제어');
+  });
+  Object.keys(firstSeen).forEach(k=>{ const [ri,di]=k.split('/'); const r=S.rooms.find(x=>x.id===ri); const d=r&&r.devices.find(x=>x.id===di); if(!d||!wasteOf(r,d)) delete firstSeen[k]; });
+  render();
+}
+
+/* ================= MQTT 연결 ================= */
+let client=null;
+function connectMqtt(){
+  if(client){client.end(true);client=null;}
+  if(S.demo){setConn();return;}
+  try{
+    client=mqtt.connect(S.mqtt.url,{username:S.mqtt.user||undefined,password:S.mqtt.pass||undefined,reconnectPeriod:3000,clientId:'wattoff_'+Math.random().toString(16).slice(2,8)});
+  }catch(e){toast('MQTT 주소 오류');return;}
+  client.on('connect',()=>{client.subscribe(S.mqtt.prefix+'/#');setConn();toast('🟢 서버 연결됨');});
+  client.on('close',setConn); client.on('error',e=>toast('MQTT 오류: '+e.message));
+  client.on('message',(topic,msg)=>{
+    const p=topic.replace(S.mqtt.prefix+'/','').split('/'); const v=msg.toString().trim(); // space/room/(device)/(kind)
+    const [space,roomId,a,b]=p; let room=S.rooms.find(r=>r.id===roomId);
+    if(!room){room={id:roomId,space,name:roomId,occupied:false,emptySince:now(),devices:[]};S.rooms.push(room);}
+    if(a==='occupancy'){ const o=v==='1'||v.toUpperCase()==='TRUE'; if(o!==room.occupied){room.occupied=o;room.emptySince=o?null:now();} }
+    else if(b==='state'){ applyState(roomId,a,v.toUpperCase()); }
+    else if(b==='power'){ const dev=room.devices.find(d=>d.id===a); if(dev){ dev.power=parseFloat(v)||0;
+        if(dev.power>0&&dev.power<STANDBY_W){dev.lowSince=dev.lowSince||now();} else dev.lowSince=null; } }
+    save(); render();
+  });
+}
+function setConn(){const c=document.getElementById('conn');
+  if(S.demo){c.textContent='데모 모드';c.className='conn';}
+  else if(client&&client.connected){c.textContent='● 연결됨';c.className='conn ok';}
+  else {c.textContent='연결 끊김';c.className='conn';}}
+
+/* ================= 알림 ================= */
+function notify(title,body){
+  toast(title+' · '+body);
+  if('Notification' in window && Notification.permission==='granted' && navigator.serviceWorker)
+    navigator.serviceWorker.ready.then(r=>r.showNotification(title,{body,icon:'icon-192.png',vibrate:[200,100,200]}));
+}
+
+/* ================= 화면 ================= */
+const $=id=>document.getElementById(id);
+function renderRoles(){ $('roleBox').innerHTML=Object.entries(ROLES).map(([k,v])=>`<button class="${S.role===k?'on':''}" onclick="S.role='${k}';S.space=ROLES['${k}'].space;save();renderRoles()">${v.n}</button>`).join('');
+  const kwh=S.savedWh/1000; $('spSaved').textContent=`🌍 ${kwh.toFixed(1)} kWh`; $('spTree').textContent=`지금까지 내가 아낀 전기 · CO₂ ${(kwh*CO2).toFixed(1)}kg 감소`;}
+function start(){ $('splash').classList.add('hide');$('main').classList.remove('hide');$('nav').classList.remove('hide');
+  if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+  connectMqtt(); render(); }
+function setSpace(s){S.space=s;save();render();}
+function page(p,el){['home','alerts','report','set'].forEach(x=>$('pg-'+x).classList.toggle('hide',x!==p));
+  document.querySelectorAll('.nav div').forEach(d=>d.classList.remove('on'));el.classList.add('on');render();}
+
+function render(){
+  if($('main').classList.contains('hide')) return;
+  const sp=S.space, rooms=S.rooms.filter(r=>r.space===sp), waste=wasteList(sp);
+  const all=rooms.flatMap(r=>r.devices.filter(d=>d.remote)), wasteW=waste.reduce((a,x)=>a+x.d.power,0);
+  const score=Math.max(0,Math.round(100-waste.length*8-wasteW/100));
+  $('t-school').className=sp==='school'?'on':''; $('t-home').className=sp==='home'?'on':'';
+  const h=new Date().getHours(); $('hello').textContent=(h<12?'좋은 아침이에요':h<18?'좋은 오후예요':'좋은 저녁이에요')+' 👋 · '+ROLES[S.role].n;
+  $('headline').textContent= waste.length? `시간당 ${Math.round(wasteW/1000*PRICE)}원이 새고 있어요`:'지금은 낭비 없음 🌱';
+  $('scoreN').textContent=score; $('ring').style.background=`conic-gradient(#3ddc84 0 ${score}%,rgba(255,255,255,.15) 0)`;
+  $('scoreTxt').innerHTML= waste.length?`낭비 기기 <b>${waste.length}개</b> · ${wasteW}W<br>모두 끄면 <b>🌱 그린 등급</b> 달성!`:`<b>훌륭해요!</b><br>오늘 ${S.daily[6]}kWh 절약 중`;
+  $('awayBtn').textContent= sp==='school'?'🏫 하교 모드':'🚪 외출 모드';
+  $('bdg').textContent=wasteList().length; $('bdg').classList.toggle('hide',!wasteList().length);
+  setConn();
+
+  // 홈
+  $('pg-home').innerHTML=`<div class="sec"><h3>⚠️ 지금 낭비 중</h3>${waste.length?waste.map(alertHtml).join(''):'<div class="empty">낭비 중인 기기가 없어요. 잘하고 있어요! 🌳</div>'}</div>
+  <div class="sec"><h3>${sp==='school'?'교실별 현황':'공간별 현황'}</h3>${rooms.map(roomHtml).join('')}</div>`;
+
+  // 알림
+  $('pg-alerts').innerHTML=`<div class="sec"><h3>🔔 현재 낭비 (전체)</h3>${wasteList().map(alertHtml).join('')||'<div class="empty">없음</div>'}</div>
+   <div class="sec"><h3>지난 알림</h3><div class="card">${S.alerts.map(a=>`<div class="log">${tm(a.t)} · ${a.txt}</div>`).join('')||'<div class="log">아직 없어요</div>'}</div></div>`;
+
+  // 리포트 (기획서 9장 계산식)
+  const kwh=S.savedWh/1000, mx=Math.max(...S.daily,1), days=['월','화','수','목','금','토','오늘'];
+  $('pg-report').innerHTML=`<div class="sec"><h3>📊 절약 리포트</h3><div class="kpi">
+    <div class="card"><b>${kwh.toFixed(2)}</b><span>절약 kWh</span></div><div class="card"><b>${Math.round(kwh*PRICE).toLocaleString()}원</b><span>절약 요금(추정)</span></div>
+    <div class="card"><b>${(kwh*CO2).toFixed(2)}kg</b><span>CO₂ 감소</span></div><div class="card"><b>${S.offCount}회</b><span>원격으로 끈 횟수</span></div></div></div>
+    <div class="sec"><div class="card"><b style="font-size:14px">이번 주 절약량 (kWh)</b><div class="bars">${S.daily.map((v,i)=>`<div style="height:${v/mx*100}%"><span>${days[i]}</span></div>`).join('')}</div><div style="height:20px"></div></div>
+    <div class="card"><b style="font-size:14px">제어 기록</b>${S.logs.slice(0,20).map(l=>`<div class="log">${tm(l.t)} · ${l.room} ${l.dev} <b>${l.action}</b> · ${l.by} · ${l.result==='success'?'✅':'❌'}</div>`).join('')||'<div class="log">아직 없어요</div>'}</div>
+    <div class="card" style="font-size:12px;color:#5c7268;line-height:1.6">계산식: kWh = W × 시간 ÷ 1000 · 요금 ≈ kWh × ${PRICE}원 · CO₂ ≈ kWh × ${CO2}</div></div>`;
+
+  if(!$('pg-set').classList.contains('hide') && !$('pg-set').dataset.drawn) drawSettings();
+}
+function alertHtml({r,d,w}){return `<div class="alert"><div class="ic">${d.control==='plug'?'🔌':'🚨'}</div><div><b>${r.name} · ${d.name}</b><p>${w} · ${d.power}W</p></div>
+  <div class="bt"><button onclick="req('${r.id}','${d.id}','OFF')">${pending[r.id+'/'+d.id]?'확인 중…':'바로 끄기'}</button><button class="g" onclick="snoozed['${r.id}/${d.id}']=1;render()">무시</button></div></div>`;}
+function roomHtml(r){
+  const ws=r.devices.filter(d=>wasteOf(r,d)).length, on=r.devices.some(d=>d.state==='ON'&&d.remote);
+  const c= ws?'#e5484d':(!r.occupied&&on)?'#f5b400':'#3ddc84';
+  return `<div class="room"><div class="hd"><i class="dot" style="background:${c}"></i><b>${r.name}</b><span>${r.occupied?'👤 사람 있음':'🚫 비어 있음'}</span></div><div class="grid">
+  ${r.devices.map(d=>{const w=wasteOf(r,d),pd=pending[r.id+'/'+d.id],lk=!canControl(r,d,d.state==='ON'?'OFF':'ON')[0];
+   return `<div class="dev ${w?'waste':''} ${pd?'pend':''}"><div class="tg ${d.state==='ON'?'on':''} ${lk?'lock':''}" onclick="req('${r.id}','${d.id}','${d.state==='ON'?'OFF':'ON'}')"></div>
+   <div class="e">${ICON[d.type]||'🔌'}</div><h4>${d.name}</h4><p>${CTRL[d.control]}${d.remote?'':' · 🔒제외'}</p>
+   <div class="w">${pd?'⏳ 명령 확인 중…':w?'● 낭비 '+d.power+'W':d.state==='ON'?'● 사용 중 '+d.power+'W':'● 꺼짐 · 절약 중'}</div></div>`}).join('')}</div></div>`;}
+function req(ri,di,a){const r=S.rooms.find(x=>x.id===ri),d=r.devices.find(x=>x.id===di);request(r,d,a);}
+const tm=t=>{const d=new Date(t);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;};
+
+function drawSettings(){
+  const m=S.mqtt;
+  $('pg-set').innerHTML=`<div class="sec"><h3>⚙️ 설정</h3>
+  <div class="card"><b>내 역할</b><select id="sRole">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${S.role===k?'selected':''}>${v.n}</option>`).join('')}</select>
+   <label>내 교실(담임·학생용 ID)</label><input id="sMy" value="${S.myRoom}"></div>
+  <div class="card"><b>자동 제어 단계</b><div class="seg" style="margin-top:8px">${[[1,'1단계<br>알림만'],[2,'2단계<br>5분 후 자동'],[3,'3단계<br>즉시 자동']].map(([v,t])=>`<button class="${S.auto===v?'on':''}" onclick="S.auto=${v};save();this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${t}</button>`).join('')}</div></div>
+  <div class="card"><b>서버 연결 (MQTT over WebSocket)</b>
+   <div class="seg" style="margin-top:8px"><button id="mDemo" class="${S.demo?'on':''}" onclick="setDemo(true)">데모 모드</button><button id="mReal" class="${S.demo?'':'on'}" onclick="setDemo(false)">실제 기기 연결</button></div>
+   <label>브로커 주소 (wss://)</label><input id="mUrl" value="${m.url}"><label>아이디</label><input id="mUser" value="${m.user}">
+   <label>비밀번호</label><input id="mPass" type="password" value="${m.pass}"><label>토픽 접두어</label><input id="mPre" value="${m.prefix}">
+   <button class="btn" onclick="saveSet()">저장 후 연결</button></div>
+  <div class="card"><b>기기 추가</b>
+   <label>공간</label><select id="aSp"><option value="school">학교</option><option value="home">집</option></select>
+   <label>방 ID (예: 2-3, living)</label><input id="aRoom"><label>방 이름</label><input id="aRn" placeholder="2학년 3반">
+   <label>기기 ID (영문, 예: light)</label><input id="aId"><label>기기 이름</label><input id="aN">
+   <label>종류</label><select id="aT">${Object.keys(ICON).map(k=>`<option>${k}</option>`).join('')}</select>
+   <label>제어 방식</label><select id="aC">${Object.entries(CTRL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+   <label><input type="checkbox" id="aEx" style="width:auto"> 제외 목록(원격 차단 불가 — 냉장고·공유기 등)</label>
+   <button class="btn" onclick="addDev()">추가</button></div>
+  <div class="card"><b>제외 목록</b><div style="margin-top:6px">${S.rooms.flatMap(r=>r.devices.filter(d=>!d.remote).map(d=>`<span class="chip">🔒 ${r.name} ${d.name}</span>`)).join('')||'없음'}</div></div>
+  <button class="btn s" onclick="if(confirm('모든 데이터를 초기화할까요?')){localStorage.removeItem('wattoff');location.reload()}">데이터 초기화</button><div style="height:20px"></div></div>`;
+  $('pg-set').dataset.drawn=1;
+}
+function setDemo(v){S.demo=v;$('mDemo').classList.toggle('on',v);$('mReal').classList.toggle('on',!v);}
+function saveSet(){S.role=$('sRole').value;S.myRoom=$('sMy').value.trim();
+  S.mqtt={url:$('mUrl').value.trim(),user:$('mUser').value.trim(),pass:$('mPass').value,prefix:$('mPre').value.trim().replace(/\/$/,'')};
+  if(!S.demo) S.rooms=S.rooms.filter(r=>r.devices.length); save(); connectMqtt(); delete $('pg-set').dataset.drawn; toast('저장했어요'); render(); drawSettings();}
+function addDev(){const ri=$('aRoom').value.trim(),di=$('aId').value.trim(); if(!ri||!di) return toast('방 ID와 기기 ID를 입력하세요');
+  let r=S.rooms.find(x=>x.id===ri); if(!r){r={id:ri,space:$('aSp').value,name:$('aRn').value||ri,occupied:false,emptySince:now(),devices:[]};S.rooms.push(r);}
+  r.devices.push({id:di,name:$('aN').value||di,type:$('aT').value,control:$('aC').value,state:'OFF',power:0,remote:!$('aEx').checked,onSince:null});
+  save(); toast('추가됨 — 토픽: '+`${S.mqtt.prefix}/${r.space}/${ri}/${di}`); delete $('pg-set').dataset.drawn; drawSettings();}
+
+function confirmBox(t,msg,ok){const m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<div class="sheet"><h3>${t}</h3><p>${msg}</p><div class="row"><button class="btn s">취소</button><button class="btn">확인</button></div></div>`;
+  const [c,o]=m.querySelectorAll('button'); c.onclick=()=>m.remove(); o.onclick=()=>{m.remove();ok();}; m.onclick=e=>{if(e.target===m)m.remove();}; document.body.appendChild(m);}
+let tt; function toast(t){let e=document.querySelector('.toast'); if(!e){e=document.createElement('div');e.className='toast';document.body.appendChild(e);} e.textContent=t; e.style.display='block'; clearTimeout(tt); tt=setTimeout(()=>e.style.display='none',2800);}
+
+renderRoles();
+setInterval(autoTick,5000);
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body></html>
